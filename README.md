@@ -6,10 +6,11 @@ A co-op tower-defense game on Solana with a player-driven loot economy. Browser-
 dark-plague medieval theme. See the master design doc for the full plan; this repo is the
 build of that plan.
 
-This repo currently delivers **§9 steps 1–2**:
+This repo currently delivers **§9 steps 1–3**:
 
 - **Step 1 — single-player slice**: one isometric map, tower placement, a controllable Warden, six escalating waves, win/lose.
 - **Step 2 — gear system** ("the hook"): difficulty-gated drops, six-tier rarity, rolled perks, stat-roll variance (god rolls), an inventory, and equip that actually modifies hero/tower stats.
+- **Step 3 — progression & a second breach** ("depth"): kills grant XP and levels; skill points feed a four-branch tree (Tower / Hero / Support / Economy, §5) whose bonuses stack with gear; a second map (The Drowned Causeway) you can switch to — each breach is a new front against the Hollow King (§2).
 
 The wallet, marketplace, $OSSA/Gold/USDC economy and co-op come later, on purpose (§9 build
 order: *fun game first, money bolted on once it's fun*).
@@ -34,6 +35,8 @@ Then open <http://localhost:5173>.
 - **WASD** moves your Warden, who auto-attacks the nearest enemy in range. Position matters — standing in the horde gets you downed for a few seconds.
 - Each enemy that reaches the **ward** chips its integrity. Lose if it hits zero; win by surviving all six waves. Call waves early for pressure with the wave button.
 - Slain enemies drop **gear** — but only hard content drops the good stuff (the boss and a full clear are where rares+ come from). Open the **Stash** (button, or **I**) to inspect relics and **equip** them into the nine slots. Bonuses (more damage, crit, lifesteal, move/attack speed, gold find, chain lightning) apply immediately. Loot persists across runs.
+- Kills grant **XP**. On level-up you earn a skill point — spend it in **Wardlines** (button, or **K**) across four branches (Tower / Hero / Support / Economy). Skill bonuses stack with gear; respec is free. Level and points persist across runs.
+- Switch **breach** with the selector under the wave box (between runs). The second map, The Drowned Causeway, is a fresh layout — the roadmap's "endless content" hook (§2): each new breach is a new map.
 
 ### The gear loop (§4)
 
@@ -67,6 +70,10 @@ src/
     itemDefs.js         #   slots, rarity ladder, perk pool + roll ranges, drop tables
     ItemFactory.js      #   seedable rolls: rarity → perks → stat-roll variance (god rolls)
     Inventory.js        #   ownership, equip/unequip, modifier aggregation, localStorage
+  progression/          # character progression as pure data (§5) — no Three.js
+    skillTree.js        #   XP curve, four branches, node chains + per-rank effects
+    Progression.js      #   level/XP, point spends, modifier aggregation, localStorage
+  core/mods.js          # merges gear + skill modifier blocks (they share keys)
   world/
     World.js            # ground (1 instanced draw call), breach path, placement rules
     DropFX.js           # pooled rarity-colored loot motes
@@ -74,8 +81,12 @@ src/
   systems/
     WaveSystem.js       # escalating wave director
     LootSystem.js       # bridges kills / full-clear to gear drops
-  ui/                   # DOM HUD, Stash panel, loot toasts + brand-themed CSS
+  ui/                   # DOM HUD, Stash, Wardlines (skill tree), toasts + CSS
 ```
+
+Gear (§4) and skills (§5) emit the **same canonical modifier keys** (heroDamage, towerDamage,
+critChance, …), so the player's effective loadout is just the additive merge of both blocks
+(`core/mods.js`). A skill point and a gear perk speak one language.
 
 ### Two principles carried everywhere
 
@@ -89,7 +100,7 @@ src/
 
 1. ✅ **Single-player slice**.
 2. ✅ **Gear system** — drops, rarities, perks, rolled stats, inventory, equip.
-3. Hero progression + skill tree + a second map.
+3. ✅ **Hero progression + skill tree + a second map**.
 4. Co-op — 2–4 players, real-time WebSocket server.
 5. The Undercroft (instanced) + marketplace + wallet + Gold/$OSSA/USDC economy.
 

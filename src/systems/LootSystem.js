@@ -13,17 +13,17 @@ export class LootSystem {
   }
 
   /** Roll drops for a slain enemy at its position. Trash rarely drops; bosses always do. */
-  enemyKilled(typeKey, worldPos) {
+  enemyKilled(typeKey, worldPos, luck = 0) {
     if (!DROP_SOURCES[typeKey]) return;     // not every enemy type is on a table
-    for (const item of rollDrop(typeKey)) {
+    for (const item of rollDrop(typeKey, Math.random, luck)) {
       this.inventory.add(item);
       this.onDrop(item, worldPos);
     }
   }
 
   /** Guaranteed high-tier reward for surviving every wave (§4 "full clears"). */
-  breachHeld(worldPos) {
-    for (const item of rollDrop('clear')) {
+  breachHeld(worldPos, luck = 0) {
+    for (const item of rollDrop('clear', Math.random, luck)) {
       this.inventory.add(item);
       this.onDrop(item, worldPos);
     }

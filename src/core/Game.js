@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Renderer } from './Renderer.js';
 import { Input } from './Input.js';
 import { ObjectPool } from './ObjectPool.js';
+import { mergeMods } from './mods.js';
 import { World } from '../world/World.js';
 import { DropFX } from '../world/DropFX.js';
 import { Hero } from '../entities/Hero.js';
@@ -11,26 +12,30 @@ import { Projectile } from '../entities/Projectile.js';
 import { WaveSystem } from '../systems/WaveSystem.js';
 import { LootSystem } from '../systems/LootSystem.js';
 import { Inventory } from '../items/Inventory.js';
+import { Progression } from '../progression/Progression.js';
 import { HUD } from '../ui/HUD.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
-import { TOWERS, WARD, ECONOMY, LIMITS } from '../config/gameConfig.js';
+import { SkillTreeUI } from '../ui/SkillTreeUI.js';
+import { TOWERS, WARD, ECONOMY, LIMITS, MAPS } from '../config/gameConfig.js';
 
-// The conductor. Owns the world, pools, hero, towers, wave director, and now the
-// gear loop (inventory + loot + drops). Resolves combat and economy and runs the
-// main loop. Keeps zero rendering detail (Renderer) and zero balancing numbers
-// (gameConfig / itemDefs) of its own.
+// The conductor. Owns the world, pools, hero, towers, wave director, the gear
+// loop (inventory + loot + drops) and now character progression (XP + skill
+// tree) and multiple breaches. Resolves combat and economy; runs the main loop.
+// Holds zero rendering detail (Renderer) and zero balancing numbers of its own.
 
 const _splashCenter = new THREE.Vector3();
 const _chainFrom = new THREE.Vector3();
-const CHAIN_RANGE2 = 3.2 * 3.2;   // how far chain-lightning can arc
-const CHAIN_FRACTION = 0.5;       // arced hit deals half the original damage
+const CHAIN_RANGE2 = 3.2 * 3.2;
+const CHAIN_FRACTION = 0.5;
 
 export class Game {
   constructor(canvas, uiRoot) {
     this.renderer = new Renderer(canvas);
     this.input = new Input(canvas);
     this.scene = this.renderer.scene;
-    this.world = new World(this.scene);
+
+    this.mapIndex = 0;
+    this.world = new World(this.scene, MAPS[this.mapIndex]);
     this.dropFX = new DropFX(this.scene);
     this.hero = new Hero(this.scene, this.world);
 
@@ -38,31 +43,40 @@ export class Game {
     this.enemies = new ObjectPool(LIMITS.maxEnemies, () => new Enemy(this.scene, this.world));
     this.projectiles = new ObjectPool(LIMITS.maxProjectiles, () => new Projectile(this.scene));
 
-    // ── Gear loop (§9.2) ─────────────────────────────────────────────────────
-    // Loot persists across runs (Inventory ↔ localStorage); a defense run resets,
-    // the stash does not. Equipped perks aggregate into `this.mods`, recomputed
-    // only when the loadout changes.
+    // ── Meta-progression: gear (§4) + skills (§5). Both persist across runs and
+    // both feed the same modifier block, recomputed only when something changes.
     this.inventory = new Inventory();
-    this.mods = this.inventory.getModifiers();
-    this.inventory.onChange(() => { this.mods = this.inventory.getModifiers(); });
+    this.progression = new Progression();
+    this._recomputeMods();
+    this.inventory.onChange(() => this._recomputeMods());
+    this.progression.onChange(() => this._recomputeMods());
+
     this.paused = false;
     this.towers = [];
 
-    // HUD first — it sets uiRoot.innerHTML wholesale, so the InventoryUI (which
-    // appends its own nodes) must be built AFTER to survive that reset.
+    // HUD first — it sets uiRoot.innerHTML wholesale, so the overlay panels
+    // (which append their own nodes) must be built AFTER to survive that reset.
     this.hud = new HUD(uiRoot, {
       onSelectTower: (kind) => { this.selectedTower = kind; },
       onCallWave: () => this._onCallWave(),
       onRestart: () => this.reset(),
       onStash: () => this.invUI.toggle(),
+      onSkills: () => this.skillUI.toggle(),
+      onCycleMap: () => this.cycleMap(),
     });
     this.invUI = new InventoryUI(uiRoot, this.inventory, {
-      onOpenChange: (open) => { this.paused = open; },
+      onOpenChange: (open) => { this.paused = open; if (open) this.skillUI.close(); },
+    });
+    this.skillUI = new SkillTreeUI(uiRoot, this.progression, {
+      onOpenChange: (open) => { this.paused = open; if (open) this.invUI.close(); },
     });
     this.loot = new LootSystem(this.inventory, {
       onDrop: (item, pos) => { this.invUI.showToast(item); this.dropFX.spawn(pos, item.rarity); },
     });
-    addEventListener('keydown', (e) => { if (e.code === 'KeyI') this.invUI.toggle(); });
+    addEventListener('keydown', (e) => {
+      if (e.code === 'KeyI') this.invUI.toggle();
+      if (e.code === 'KeyK') this.skillUI.toggle();
+    });
 
     this.spawnProjectile = this.spawnProjectile.bind(this);
     this._spawnEnemy = this._spawnEnemy.bind(this);
@@ -74,16 +88,22 @@ export class Game {
     requestAnimationFrame(this._loop);
   }
 
+  // Merge gear + skill modifiers and push the persistent ones (max HP, regen)
+  // into the hero. Called whenever loadout or skills change.
+  _recomputeMods() {
+    this.mods = mergeMods(this.inventory.getModifiers(), this.progression.getModifiers());
+    this.hero.setMods(this.mods);
+  }
+
   reset() {
-    // Recycle the run's transient state. NOTE: the inventory/stash is deliberately
-    // NOT cleared — loot is meta-progression that carries between breaches (§4).
     this.enemies.forEachActive((e) => { e.hide(); this.enemies.release(e); });
     this.projectiles.forEachActive((p) => { p.hide(); this.projectiles.release(p); });
     for (const t of this.towers) this.scene.remove(t.object);
     this.towers = [];
     this.world.occupied.clear();
 
-    this.gold = ECONOMY.startingGold;
+    // Starting Gold can be raised by the Economy tree (§5 War Chest).
+    this.gold = ECONOMY.startingGold + (this.mods.startingGold || 0);
     this.ward = WARD.maxIntegrity;
     this.selectedTower = null;
     this.state = 'playing';          // 'playing' | 'won' | 'lost'
@@ -92,6 +112,16 @@ export class Game {
     this.hero._revive();
     this.hud.clearSelection();
     this.hud.hideResult();
+  }
+
+  // ── Breaches (§2: each new map pushes back the Hollow King) ───────────────────
+  cycleMap() {
+    this.mapIndex = (this.mapIndex + 1) % MAPS.length;
+    this.world.dispose();
+    this.world = new World(this.scene, MAPS[this.mapIndex]);
+    this.hero.setWorld(this.world);
+    for (const e of this.enemies.members) e.world = this.world; // pooled enemies follow the new path
+    this.reset();
   }
 
   _onCallWave() {
@@ -121,13 +151,12 @@ export class Game {
     this.towers.push(new Tower(this.scene, this.world, this.selectedTower, col, row));
     this.world.markOccupied(col, row);
     this.gold -= def.cost;
-    if (this.gold < def.cost) this.hud.clearSelection(); // can't afford another
+    if (this.gold < def.cost) this.hud.clearSelection();
   }
 
   // ── Combat resolution ───────────────────────────────────────────────────────
   _resolveHit(p) {
     if (p.splash > 0) {
-      // AoE (e.g. Stormcaller spire) — damage everything in the blast.
       _splashCenter.copy(p.object.position);
       const r2 = p.splash * p.splash;
       this.enemies.forEachActive((e) => {
@@ -141,18 +170,16 @@ export class Game {
     }
     if (!p.target || !p.target.active) return;
 
-    _chainFrom.copy(p.object.position);          // capture impact point before any kill
+    _chainFrom.copy(p.object.position);
     const killed = p.target.damage(p.damage);
     if (killed) this._killEnemy(p.target);
 
-    // Gear riders only ride hero shots (§4 perks).
     if (p.fromHero) {
       if (p.lifesteal > 0) this.hero.heal(p.damage * p.lifesteal);
       if (p.chain > 0 && Math.random() < p.chain) this._chainArc(p.target, _chainFrom, p.damage);
     }
   }
 
-  // Chain-lightning perk (§4): arc to the nearest *other* enemy for partial damage.
   _chainArc(origin, fromPos, damage) {
     let best = null, bestD = CHAIN_RANGE2;
     this.enemies.forEachActive((e) => {
@@ -166,8 +193,10 @@ export class Game {
   }
 
   _killEnemy(e) {
-    this.gold += e.reward * (1 + (this.mods.goldFind || 0)); // §6.1 Gold, +Gold Find perk
-    this.loot.enemyKilled(e.typeKey, e.position());          // §4 difficulty-gated drops
+    this.gold += e.reward * (1 + (this.mods.goldFind || 0));         // §6.1 + §5 Plunder
+    const gained = this.progression.addXp(e.def.xp || 0);           // §5 XP → levels
+    if (gained > 0) this.hud.flashLevelUp(this.progression.level);
+    this.loot.enemyKilled(e.typeKey, e.position(), this.mods.magicFind || 0); // §4 drops + §5 luck
     e.hide();
     this.enemies.release(e);
   }
@@ -187,7 +216,7 @@ export class Game {
 
   // ── Main loop ────────────────────────────────────────────────────────────────
   _loop(now) {
-    const dt = Math.min((now - this._last) / 1000, 0.05); // clamp tab-switch spikes
+    const dt = Math.min((now - this._last) / 1000, 0.05);
     this._last = now;
 
     if (this.state === 'playing' && !this.paused) this._update(dt);
@@ -196,13 +225,11 @@ export class Game {
   }
 
   _update(dt) {
-    // Placement clicks (left button only).
     for (const c of this.input.drainClicks()) {
       if (c.button === 0) this._tryPlace(c.x, c.y);
-      else this.hud.clearSelection(); // right-click cancels
+      else this.hud.clearSelection();
     }
 
-    // Hover preview while a defense is selected.
     if (this.selectedTower && this.input.pointerOnScreen) {
       const g = this.renderer.pointerToGround(this.input.pointerNDC.x, this.input.pointerNDC.y);
       if (g) { const { col, row } = this.world.worldToGrid(g.x, g.z); this.world.showHover(col, row); }
@@ -213,7 +240,11 @@ export class Game {
 
     this.waves.update(dt);
 
-    // Enemies — advance; those reaching the ward damage it and are recycled.
+    // Ward slowly mends if the Support tree invests in it (§5).
+    if (this.mods.wardRegen > 0 && this.ward < WARD.maxIntegrity) {
+      this.ward = Math.min(WARD.maxIntegrity, this.ward + this.mods.wardRegen * dt);
+    }
+
     this.enemies.forEachActive((e) => {
       if (e.update(dt) === 'reached') {
         this.ward -= e.wardDamage;
@@ -225,7 +256,6 @@ export class Game {
     for (const t of this.towers) t.update(dt, this.enemies, this.spawnProjectile, this.mods);
     this.hero.update(dt, this.input, this.enemies, this.spawnProjectile, this.mods);
 
-    // Projectiles — resolve hits / expiries.
     this.projectiles.forEachActive((p) => {
       const status = p.update(dt);
       if (status === 'hit') { this._resolveHit(p); p.hide(); this.projectiles.release(p); }
@@ -245,7 +275,7 @@ export class Game {
       this.hud.showResult(false);
     } else if (this.waves.allWavesSpawned && this.enemies.countActive() === 0) {
       this.state = 'won';
-      this.loot.breachHeld(this.world.ward);   // guaranteed full-clear reward (§4)
+      this.loot.breachHeld(this.world.ward, this.mods.magicFind || 0); // full-clear reward (§4)
       this.hud.showResult(true);
     }
   }
@@ -254,11 +284,19 @@ export class Game {
     this.hud.update({
       gold: Math.floor(this.gold),
       ward: this.ward,
+      heroHp: this.hero.hp,
+      heroMaxHp: this.hero.maxHp,
       wave: this.waves.currentWaveNumber,
       totalWaves: this.waves.totalWaves,
       started: this.waves.started,
       inCooldown: this.waves.inCooldown,
+      playing: this.state === 'playing',
       relicCount: this.inventory.count(),
+      mapName: this.world.name,
+      level: this.progression.level,
+      xp: this.progression.xp,
+      xpNext: this.progression.xpToNext(),
+      skillPoints: this.progression.unspent,
     });
   }
 }

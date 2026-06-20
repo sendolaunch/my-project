@@ -21,16 +21,31 @@ export class Hero {
     scene.add(this.object);
     this.tintMesh = this.object.userData.tintMesh;
 
-    this.maxHp = def.maxHp;
+    this.baseMaxHp = def.maxHp;
+    this.maxHp = def.maxHp;                   // recomputed by setMods (§5 Support)
     this.hp = def.maxHp;
+    this.regen = 0;                           // HP/sec from skills
     this.range2 = def.attackRange * def.attackRange;
     this.cooldown = 0;
     this.downed = false;
     this.downTimer = 0;
     this.contactTick = 0;
 
-    this.home = world.gridToWorld(2, 6, 0);   // rally point near the breach lane
+    this.setWorld(world);
+  }
+
+  // Bind to a (possibly new) map and rally near its breach lane.
+  setWorld(world) {
+    this.world = world;
+    this.home = world.worldPath[1].clone();   // first bend — in-bounds, near the action
     this.object.position.copy(this.home);
+  }
+
+  // Apply the merged gear+skill modifiers that affect persistent stats (§5).
+  setMods(mods) {
+    this.maxHp = this.baseMaxHp * (1 + (mods.heroMaxHp || 0));
+    this.hp = Math.min(this.hp, this.maxHp);
+    this.regen = mods.heroRegen || 0;
   }
 
   update(dt, input, enemyPool, spawnProjectile, mods = {}) {
@@ -39,6 +54,9 @@ export class Hero {
       if (this.downTimer <= 0) this._revive();
       return;
     }
+
+    // Passive regen from the Support tree (§5).
+    if (this.regen > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
 
     // Equipped gear scales the base stats (§4 perks → live effects).
     const moveSpeed = this.def.moveSpeed * (1 + (mods.moveSpeed || 0));

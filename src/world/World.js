@@ -1,19 +1,22 @@
 import * as THREE from 'three';
-import { GRID, PATH_WAYPOINTS } from '../config/gameConfig.js';
+import { GRID } from '../config/gameConfig.js';
 import { PALETTE } from '../config/palette.js';
 import { Assets } from '../assets/AssetRegistry.js';
 
 // The map: ground grid, the breach path the dead walk, and tower placement
-// rules. The board is centered on the world origin so the iso camera framing
-// is symmetric. The ground is a single InstancedMesh (one draw call for all
-// ~200 tiles) per the §14 draw-call budget; a lone highlight quad tracks the
-// hovered tile instead of per-tile hover meshes.
+// rules. Built from a map definition (§2: every breach is a new map) so swapping
+// breaches just means `new World(scene, mapDef)`. The board is centered on the
+// world origin so the iso camera framing is symmetric. The ground is a single
+// InstancedMesh (one draw call for all tiles) per the §14 draw-call budget; a
+// lone highlight quad tracks the hovered tile instead of per-tile hover meshes.
 
 export class World {
-  constructor(scene) {
+  constructor(scene, mapDef) {
     this.scene = scene;
-    this.cols = GRID.cols;
-    this.rows = GRID.rows;
+    this.map = mapDef;
+    this.name = mapDef.name;
+    this.cols = mapDef.cols;
+    this.rows = mapDef.rows;
     this.tile = GRID.tile;
     this.width = this.cols * this.tile;
     this.depth = this.rows * this.tile;
@@ -26,6 +29,19 @@ export class World {
     this._buildGround();
     this._placeWard();
     this._buildHover();
+  }
+
+  // Tear down everything this map added to the scene, so the next breach can be
+  // built clean (no leaked geometry/material on map switch).
+  dispose() {
+    const free = (obj) => obj.traverse?.((o) => { o.geometry?.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose()); });
+    for (const obj of [this.groundMesh, this.wardObject, this.hover]) {
+      if (!obj) continue;
+      this.scene.remove(obj);
+      obj.geometry?.dispose?.();
+      if (obj.material) obj.material.dispose?.();
+      free(obj);
+    }
   }
 
   key(col, row) { return `${col},${row}`; }
@@ -60,12 +76,13 @@ export class World {
   // Fill the cells between consecutive waypoints (cardinal segments) and record
   // the world-space waypoint centers that enemies steer toward.
   _computePath() {
-    for (const wp of PATH_WAYPOINTS) {
+    const waypoints = this.map.waypoints;
+    for (const wp of waypoints) {
       this.worldPath.push(this.gridToWorld(wp.col, wp.row, 0));
     }
-    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
-      const a = PATH_WAYPOINTS[i];
-      const b = PATH_WAYPOINTS[i + 1];
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      const a = waypoints[i];
+      const b = waypoints[i + 1];
       const dc = Math.sign(b.col - a.col);
       const dr = Math.sign(b.row - a.row);
       let c = a.col, r = a.row;

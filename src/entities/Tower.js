@@ -29,7 +29,9 @@ export class Tower {
     }
 
     // Nearest active enemy within range (squared distance — no sqrt in the loop).
-    let best = null, bestD = this.range2;
+    // Range can be widened by the Tower Specialist tree (§5).
+    const range = this.def.range * (1 + (mods.towerRange || 0));
+    let best = null, bestD = range * range;
     const here = this.object.position;
     enemyPool.forEachActive((e) => {
       const dx = e.position().x - here.x;
@@ -46,9 +48,9 @@ export class Tower {
 
     if (this.cooldown <= 0) {
       const muzzle = _v.copy(here); muzzle.y = 0.7;
-      const damage = this.def.damage * (1 + (mods.towerDamage || 0)); // §4 +tower damage perk
+      const damage = this.def.damage * (1 + (mods.towerDamage || 0)); // §4 perk + §5 tree
       spawnProjectile(muzzle, best, damage, this.def.projectileSpeed, this.def.splash, this.def.color, {});
-      this.cooldown = 1 / this.def.attacksPerSec;
+      this.cooldown = 1 / (this.def.attacksPerSec * (1 + (mods.towerAttackSpeed || 0)));
     }
   }
 }

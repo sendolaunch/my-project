@@ -109,19 +109,38 @@ export function rollRarityFromTable(table, rng = Math.random) {
   return entries[entries.length - 1][0];
 }
 
+// "Drop luck" from the Economy tree (§5 magicFind) nudges results up: it raises
+// the drop chance and gives extra reroll-keep-the-higher attempts on rarity. It
+// can NEVER exceed the source's own table, so the §4 anti-farm floor still holds —
+// trash mobs stay incapable of a legendary no matter how lucky.
+function rollRarityWithLuck(table, rng, luck) {
+  let key = rollRarityFromTable(table, rng);
+  if (luck > 0) {
+    let attempts = Math.floor(luck / 0.25);              // +1 attempt per +25% luck
+    if (rng() < (luck % 0.25) / 0.25) attempts += 1;     // fractional remainder
+    attempts = Math.min(attempts, 3);                    // diminishing returns
+    for (let i = 0; i < attempts; i++) {
+      const k2 = rollRarityFromTable(table, rng);
+      if (RARITY_BY_KEY[k2].tier > RARITY_BY_KEY[key].tier) key = k2;
+    }
+  }
+  return key;
+}
+
 /**
  * Roll the loot a drop source yields. Returns an array (0..n items). The source
  * key is one of DROP_SOURCES (enemy type or 'clear'). Difficulty gates value:
- * the source's own table decides the rarity floor (§4).
+ * the source's own table decides the rarity floor (§4). `luck` is §5 magic find.
  */
-export function rollDrop(sourceKey, rng = Math.random) {
+export function rollDrop(sourceKey, rng = Math.random, luck = 0) {
   const src = DROP_SOURCES[sourceKey];
   if (!src) return [];
   const out = [];
   const count = src.count || 1;
+  const chance = Math.min(1, src.chance * (1 + luck));
   for (let i = 0; i < count; i++) {
-    if (rng() > src.chance) continue;
-    const rarityKey = rollRarityFromTable(src.table, rng);
+    if (rng() > chance) continue;
+    const rarityKey = rollRarityWithLuck(src.table, rng, luck);
     const slot = SLOTS[Math.floor(rng() * SLOTS.length)];
     out.push(rollItem(slot, rarityKey, rng));
   }

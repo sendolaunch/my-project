@@ -3,24 +3,36 @@
 // later be shared with the authoritative co-op server (§9.4) unchanged.
 
 export const GRID = {
-  cols: 18,
-  rows: 12,
-  tile: 1,        // world units per tile
+  tile: 1,        // world units per tile (shared across maps)
 };
 
-// The single map's breach path (§9.1 "one map"). A fixed waypoint list instead
-// of runtime A* — reliable for a slice and trivial for enemies to follow. The
-// breach (spawn) is the first cell, the ward (defend point) is the last.
-// Cells between waypoints are filled cardinally to mark non-buildable path tiles.
-export const PATH_WAYPOINTS = [
-  { col: 0,  row: 6 },
-  { col: 4,  row: 6 },
-  { col: 4,  row: 2 },
-  { col: 9,  row: 2 },
-  { col: 9,  row: 9 },
-  { col: 13, row: 9 },
-  { col: 13, row: 5 },
-  { col: 17, row: 5 }, // the ward
+// The breaches (§2: "every new breach is a new map ... pushes back one piece of
+// the Hollow King's reach"). Each map is a grid plus a fixed waypoint path — a
+// reliable substitute for runtime A* that enemies trivially follow. The breach
+// (spawn) is the first waypoint, the ward (defend point) is the last; cells
+// between waypoints are filled cardinally and marked non-buildable. Waypoints
+// must be cardinally aligned (share a row or col) — World fills them stepwise.
+export const MAPS = [
+  {
+    id: 'cathedral',
+    name: 'The Cathedral Breach',
+    blurb: 'Where the first seal cracked, beneath the fallen cathedral.',
+    cols: 18, rows: 12,
+    waypoints: [
+      { col: 0,  row: 6 }, { col: 4,  row: 6 }, { col: 4,  row: 2 }, { col: 9, row: 2 },
+      { col: 9,  row: 9 }, { col: 13, row: 9 }, { col: 13, row: 5 }, { col: 17, row: 5 },
+    ],
+  },
+  {
+    id: 'causeway',
+    name: 'The Drowned Causeway',
+    blurb: 'A sunken pilgrim road. The dead march the old stones to the seawall ward.',
+    cols: 20, rows: 13,
+    waypoints: [
+      { col: 0,  row: 3 }, { col: 6,  row: 3 }, { col: 6,  row: 9 }, { col: 11, row: 9 },
+      { col: 11, row: 2 }, { col: 16, row: 2 }, { col: 16, row: 10 }, { col: 19, row: 10 },
+    ],
+  },
 ];
 
 export const WARD = {
@@ -87,10 +99,10 @@ export const TOWERS = {
 
 // The Hollow — the dead that pour through the breach (§2).
 export const ENEMIES = {
-  shambler: { name: 'Shambler', maxHp: 30,  moveSpeed: 1.6, wardDamage: 1, reward: 6,  radius: 0.32, color: 0x9bd089 },
-  runner:   { name: 'Runner',   maxHp: 18,  moveSpeed: 3.2, wardDamage: 1, reward: 5,  radius: 0.26, color: 0xbfe0a3 },
-  brute:    { name: 'Brute',    maxHp: 130, moveSpeed: 1.1, wardDamage: 3, reward: 18, radius: 0.46, color: 0x7fb070 },
-  herald:   { name: 'Herald of the Hollow King', maxHp: 650, moveSpeed: 1.0, wardDamage: 8, reward: 90, radius: 0.62, color: 0x6EE65A, boss: true },
+  shambler: { name: 'Shambler', maxHp: 30,  moveSpeed: 1.6, wardDamage: 1, reward: 6,  xp: 10,  radius: 0.32, color: 0x9bd089 },
+  runner:   { name: 'Runner',   maxHp: 18,  moveSpeed: 3.2, wardDamage: 1, reward: 5,  xp: 7,   radius: 0.26, color: 0xbfe0a3 },
+  brute:    { name: 'Brute',    maxHp: 130, moveSpeed: 1.1, wardDamage: 3, reward: 18, xp: 28,  radius: 0.46, color: 0x7fb070 },
+  herald:   { name: 'Herald of the Hollow King', maxHp: 650, moveSpeed: 1.0, wardDamage: 8, reward: 90, xp: 120, radius: 0.62, color: 0x6EE65A, boss: true },
 };
 
 // Escalating waves (§9.1). Each wave is a set of spawn groups; a group drips
