@@ -1,0 +1,13 @@
+{
+  "name": "ossara",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OSSARA — co-op tower-defense on Solana. Single-player slice (§9.1).",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve . -l 5173",
+    "dev": "npx --yes serve . -l 5173"
+  },
+  "keywords": ["ossara", "tower-defense", "threejs", "game"],
+  "license": "UNLICENSED"
+}

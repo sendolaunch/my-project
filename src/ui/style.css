@@ -1,0 +1,86 @@
+/* OSSARA HUD — DOM overlay over the WebGL canvas. Brand palette §12 carried
+   into the whole interface (§14: cohesive UI is what makes it look intentional). */
+
+:root {
+  --void: #070806;
+  --bone: #E9E4D2;
+  --plague: #6EE65A;
+  --rot: #2c6b27;
+  --ash: #8f886f;
+  --danger: #b83a2e;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--void); }
+body { font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: var(--bone); }
+
+#game-root { position: fixed; inset: 0; }
+#game-canvas { position: absolute; inset: 0; display: block; }
+#ui-root { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+#ui-root > * { pointer-events: auto; }
+
+/* Top bar */
+.hud-top { position: absolute; top: 0; left: 0; right: 0; display: flex;
+  justify-content: space-between; align-items: flex-start; padding: 14px 18px; gap: 16px; }
+
+.brand { line-height: 1; }
+.brand .wordmark { font-size: 26px; font-weight: 800; letter-spacing: 6px;
+  color: var(--bone); text-shadow: 0 0 14px rgba(110,230,90,.35); }
+.brand .wordmark b { color: var(--plague); font-weight: 800; }
+.brand .tagline { margin-top: 4px; font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--ash); }
+
+.wave-box { text-align: center; background: rgba(7,8,6,.6); border: 1px solid var(--rot);
+  border-radius: 8px; padding: 8px 16px; min-width: 180px; }
+.wave-box .label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ash); }
+.wave-box .value { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+.call-wave { margin-top: 6px; font: inherit; font-size: 12px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--void); background: var(--plague);
+  border: none; border-radius: 5px; padding: 5px 12px; cursor: pointer; font-weight: 700; }
+.call-wave:hover { filter: brightness(1.1); }
+.call-wave.hidden { display: none; }
+
+.stats { text-align: right; min-width: 200px; }
+.stat-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 6px; }
+.stat-row .k { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ash); }
+.gold .v { font-size: 20px; font-weight: 700; color: var(--bone); }
+.gold .v::before { content: "◈ "; color: var(--plague); }
+
+.ward-bar { width: 200px; height: 14px; background: rgba(233,228,210,.12);
+  border: 1px solid var(--ash); border-radius: 7px; overflow: hidden; }
+.ward-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--rot), var(--plague));
+  transition: width .2s ease; }
+.ward-fill.low { background: linear-gradient(90deg, #6b1f18, var(--danger)); }
+
+/* Build bar */
+.build-bar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; }
+.build-btn { width: 132px; text-align: left; background: rgba(7,8,6,.72);
+  border: 1px solid var(--rot); border-radius: 8px; padding: 8px 10px; cursor: pointer;
+  color: var(--bone); font: inherit; transition: border-color .12s, transform .08s; }
+.build-btn:hover { transform: translateY(-2px); }
+.build-btn .name { font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+.build-btn .order { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--ash); }
+.build-btn .cost { margin-top: 4px; font-size: 12px; color: var(--plague); }
+.build-btn .cost::before { content: "◈ "; }
+.build-btn .key { float: right; font-size: 10px; color: var(--ash); border: 1px solid var(--ash);
+  border-radius: 3px; padding: 0 4px; }
+.build-btn.selected { border-color: var(--plague); box-shadow: 0 0 12px rgba(110,230,90,.35); }
+.build-btn.unaffordable { opacity: .45; cursor: not-allowed; }
+
+.hint { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; letter-spacing: 1px; color: var(--ash); text-align: center; }
+
+/* Result overlay */
+.overlay { position: absolute; inset: 0; display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px; text-align: center;
+  background: radial-gradient(circle at center, rgba(7,8,6,.82), rgba(7,8,6,.96)); }
+.overlay.show { display: flex; }
+.overlay h1 { margin: 0; font-size: 56px; letter-spacing: 8px; text-transform: uppercase; }
+.overlay.win h1 { color: var(--plague); text-shadow: 0 0 24px rgba(110,230,90,.5); }
+.overlay.lose h1 { color: var(--danger); text-shadow: 0 0 24px rgba(184,58,46,.5); }
+.overlay p { margin: 0; color: var(--ash); letter-spacing: 2px; max-width: 460px; }
+.overlay button { font: inherit; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+  font-weight: 700; color: var(--void); background: var(--plague); border: none;
+  border-radius: 6px; padding: 12px 26px; cursor: pointer; }
+.overlay button:hover { filter: brightness(1.1); }
