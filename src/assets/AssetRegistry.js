@@ -22,6 +22,7 @@ const geo = {
   heroHead:  new THREE.IcosahedronGeometry(0.20, 0),
   enemy:     new THREE.IcosahedronGeometry(1, 0),       // scaled per type
   projectile:new THREE.SphereGeometry(0.12, 8, 8),
+  spark:     new THREE.OctahedronGeometry(0.15, 0),
   towerBase: new THREE.CylinderGeometry(0.34, 0.42, 0.25, 8),
   spike:     new THREE.ConeGeometry(0.08, 0.4, 5),
   ballistaArm: new THREE.BoxGeometry(0.7, 0.08, 0.08),
@@ -76,6 +77,13 @@ const builders = {
 
   projectile(color) {
     return new THREE.Mesh(geo.projectile, glow(color, 1.4));
+  },
+
+  // A loot mote that pops where an enemy dies, tinted by item rarity. Basic
+  // transparent material so it can fade out (own material per instance).
+  lootSpark(color = 0x6EE65A) {
+    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false });
+    return new THREE.Mesh(geo.spark, m);
   },
 
   tower(kind, def) {

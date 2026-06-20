@@ -5,10 +5,11 @@ import { TOWERS, WARD } from '../config/gameConfig.js';
 // callbacks. No game logic lives here.
 
 export class HUD {
-  constructor(root, { onSelectTower, onCallWave, onRestart }) {
+  constructor(root, { onSelectTower, onCallWave, onRestart, onStash }) {
     this.onSelectTower = onSelectTower;
     this.onCallWave = onCallWave;
     this.onRestart = onRestart;
+    this.onStash = onStash || (() => {});
     this.selected = null;
     this.buttons = {};
 
@@ -31,6 +32,8 @@ export class HUD {
 
       <div class="hint" data-hint>Select a defense, then click a tile to place it · WASD move the Warden</div>
 
+      <button class="stash-btn" data-stash>▣ <b>Stash</b> · <span data-relics>0</span> relics <span class="key">I</span></button>
+
       <div class="build-bar" data-buildbar></div>
 
       <div class="overlay" data-overlay>
@@ -48,8 +51,10 @@ export class HUD {
     this.$result  = root.querySelector('[data-result]');
     this.$resultSub = root.querySelector('[data-resultsub]');
 
+    this.$relics = root.querySelector('[data-relics]');
     this.$callBtn.addEventListener('click', () => this.onCallWave());
     root.querySelector('[data-restart]').addEventListener('click', () => this.onRestart());
+    root.querySelector('[data-stash]').addEventListener('click', () => this.onStash());
 
     // Build one button per tower, in config order. Keys 1..N select them.
     let i = 1;
@@ -87,6 +92,7 @@ export class HUD {
 
   update(state) {
     this.$gold.textContent = state.gold;
+    if (state.relicCount !== undefined) this.$relics.textContent = state.relicCount;
 
     const pct = Math.max(0, state.ward / WARD.maxIntegrity) * 100;
     this.$ward.style.width = `${pct}%`;

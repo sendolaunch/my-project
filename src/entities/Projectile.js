@@ -17,14 +17,19 @@ export class Projectile {
     this.active = false;
   }
 
-  reset(origin, target, damage, speed, splash, color) {
+  reset(origin, target, damage, speed, splash, color, opts = {}) {
     this.object.position.copy(origin);
     this.target = target;            // an Enemy (may go inactive mid-flight)
     this.damage = damage;
     this.speed = speed;
     this.splash = splash;
+    // Gear-driven combat riders (§4 perks); 0 / false when not applicable.
+    this.lifesteal = opts.lifesteal || 0;   // fraction of damage that heals the hero
+    this.chain = opts.chain || 0;            // chance to arc to a second enemy
+    this.fromHero = !!opts.fromHero;
     this.object.material.color.setHex(color);
     this.object.material.emissive.setHex(color);
+    this.object.scale.setScalar(opts.crit ? 1.7 : 1); // crits read bigger/brighter
     this.object.visible = true;
     this.life = 2.5;                 // safety expiry (seconds)
   }

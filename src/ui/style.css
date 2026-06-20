@@ -84,3 +84,73 @@ body { font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: va
   font-weight: 700; color: var(--void); background: var(--plague); border: none;
   border-radius: 6px; padding: 12px 26px; cursor: pointer; }
 .overlay button:hover { filter: brightness(1.1); }
+
+/* ── Gear: stash panel + loot toasts (§9.2) ───────────────────────────────── */
+
+/* "Stash" HUD button — bottom-left, clear of the wave box and build bar. */
+.stash-btn { position: absolute; left: 18px; bottom: 16px;
+  font: inherit; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--bone);
+  background: rgba(7,8,6,.72); border: 1px solid var(--rot); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+.stash-btn:hover { border-color: var(--plague); }
+.stash-btn b { color: var(--plague); }
+.stash-btn .key { font-size: 10px; color: var(--ash); border: 1px solid var(--ash); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
+
+.stash { position: absolute; inset: 0; display: none; flex-direction: column;
+  background: rgba(7,8,6,.93); backdrop-filter: blur(3px); padding: 24px clamp(16px, 5vw, 80px); }
+.stash.show { display: flex; }
+.stash-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--rot); padding-bottom: 12px; }
+.stash-head h2 { margin: 0; font-size: 24px; letter-spacing: 5px; text-transform: uppercase; }
+.stash-head h2 span { font-size: 13px; letter-spacing: 2px; color: var(--ash); text-transform: none; }
+.stash-close { font: inherit; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--void);
+  background: var(--plague); border: none; border-radius: 5px; padding: 8px 16px; cursor: pointer; font-weight: 700; }
+
+.stash-body { display: grid; grid-template-columns: minmax(320px, 1fr) 2fr; gap: 28px; margin-top: 18px; overflow: hidden; flex: 1; }
+.stash-body h3 { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--ash); margin: 4px 0 10px; }
+
+.loadout { overflow-y: auto; padding-right: 8px; }
+.slots { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.slot { border: 1px dashed var(--ash); border-radius: 8px; min-height: 64px; padding: 6px; }
+.slot.empty { display: flex; flex-direction: column; gap: 4px; opacity: .5; }
+.slot .slot-name { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ash); }
+.slot .slot-hint { font-size: 11px; color: var(--ash); }
+.slot.filled { border-style: solid; border-color: var(--rot); padding: 0; }
+
+.mods ul { list-style: none; margin: 0; padding: 0; columns: 2; }
+.mods li { font-size: 13px; margin-bottom: 5px; color: var(--bone); }
+.mods li b { color: var(--plague); }
+.mods li.cosmetic b { color: var(--bone); }
+.mods .empty, .relics .empty { color: var(--ash); font-size: 13px; }
+
+.backpack { overflow-y: auto; padding-right: 4px; }
+.relics { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; align-content: start; }
+
+.relic { text-align: left; cursor: pointer; color: var(--bone); font: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 18%, transparent), rgba(7,8,6,.4));
+  border: 1px solid var(--rc); border-left: 3px solid var(--rc); border-radius: 7px; padding: 8px 10px;
+  display: block; width: 100%; transition: transform .08s, box-shadow .12s; }
+.relic:hover { transform: translateY(-2px); box-shadow: 0 0 14px color-mix(in srgb, var(--rc) 45%, transparent); }
+.relic.sel { outline: 2px solid var(--rc); }
+.relic-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.relic-name { font-size: 13px; font-weight: 700; color: var(--rc); line-height: 1.15; }
+.relic-sub { font-size: 11px; color: var(--ash); margin: 2px 0 6px; }
+.god { font-size: 9px; letter-spacing: 1px; font-weight: 800; color: var(--void); background: var(--rc);
+  border-radius: 3px; padding: 1px 4px; white-space: nowrap; }
+.qbar { position: relative; height: 12px; background: rgba(233,228,210,.1); border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
+.qfill { height: 100%; background: var(--rc); opacity: .8; }
+.qbar span { position: absolute; right: 5px; top: -1px; font-size: 10px; color: var(--bone); }
+.perks { list-style: none; margin: 0 0 6px; padding: 0; }
+.perk { font-size: 12px; margin-bottom: 2px; color: var(--bone); }
+.perk b { color: var(--plague); }
+.perk.cosmetic { color: var(--ash); }
+.perk .tag { font-size: 9px; border: 1px solid var(--ash); border-radius: 3px; padding: 0 3px; color: var(--ash); }
+.relic-act { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ash); }
+
+/* Loot toasts */
+.toast-stack { position: absolute; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.toast { display: grid; grid-template-columns: auto; background: rgba(7,8,6,.9); border: 1px solid var(--rc);
+  border-left: 4px solid var(--rc); border-radius: 7px; padding: 8px 14px; min-width: 220px;
+  opacity: 0; transform: translateX(30px); transition: opacity .3s, transform .3s; }
+.toast.in { opacity: 1; transform: translateX(0); }
+.toast .t-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--ash); }
+.toast .t-name { font-size: 14px; font-weight: 700; color: var(--rc); }
+.toast .t-rarity { font-size: 11px; color: var(--ash); }

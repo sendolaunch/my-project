@@ -6,9 +6,13 @@ A co-op tower-defense game on Solana with a player-driven loot economy. Browser-
 dark-plague medieval theme. See the master design doc for the full plan; this repo is the
 build of that plan.
 
-This commit delivers **§9, step 1 — the single-player slice**: one isometric map, tower
-placement, one controllable hero, escalating waves, win/lose. The economy, loot, wallet and
-co-op come later, on purpose (§9 build order: *fun game first, money bolted on once it's fun*).
+This repo currently delivers **§9 steps 1–2**:
+
+- **Step 1 — single-player slice**: one isometric map, tower placement, a controllable Warden, six escalating waves, win/lose.
+- **Step 2 — gear system** ("the hook"): difficulty-gated drops, six-tier rarity, rolled perks, stat-roll variance (god rolls), an inventory, and equip that actually modifies hero/tower stats.
+
+The wallet, marketplace, $OSSA/Gold/USDC economy and co-op come later, on purpose (§9 build
+order: *fun game first, money bolted on once it's fun*).
 
 ## Run it
 
@@ -29,6 +33,16 @@ Then open <http://localhost:5173>.
 - Pick a defense from the bar (or press **1 / 2 / 3**), then **click a tile** to place it. Defenses cost Gold; you earn Gold by killing the Hollow.
 - **WASD** moves your Warden, who auto-attacks the nearest enemy in range. Position matters — standing in the horde gets you downed for a few seconds.
 - Each enemy that reaches the **ward** chips its integrity. Lose if it hits zero; win by surviving all six waves. Call waves early for pressure with the wave button.
+- Slain enemies drop **gear** — but only hard content drops the good stuff (the boss and a full clear are where rares+ come from). Open the **Stash** (button, or **I**) to inspect relics and **equip** them into the nine slots. Bonuses (more damage, crit, lifesteal, move/attack speed, gold find, chain lightning) apply immediately. Loot persists across runs.
+
+### The gear loop (§4)
+
+Every item stacks three layers: **rarity** (common→mythic, sets how many perks roll), **perks**
+(rolled abilities pulled from a slot-appropriate pool), and **stat rolls** (each perk's magnitude
+rolls in a range — so two identical legendaries differ). A near-max roll is a **god roll**, flagged
+in the UI. Drops are difficulty-gated: trash mobs can never cough up a legendary; bosses and full
+clears can. That's the §4 engine — an infinite grind and, later, a permanent market — built now as
+pure data so the marketplace at §9.5 plugs straight in.
 
 ## Architecture
 
@@ -49,10 +63,18 @@ src/
   assets/
     AssetRegistry.js    # THE art boundary (§14). Placeholder geometry today; swap one
                         #   builder for a GLTF and nothing in gameplay changes.
-  world/World.js        # ground (1 instanced draw call), breach path, placement rules
+  items/                # the gear system, as pure data (§4) — no Three.js
+    itemDefs.js         #   slots, rarity ladder, perk pool + roll ranges, drop tables
+    ItemFactory.js      #   seedable rolls: rarity → perks → stat-roll variance (god rolls)
+    Inventory.js        #   ownership, equip/unequip, modifier aggregation, localStorage
+  world/
+    World.js            # ground (1 instanced draw call), breach path, placement rules
+    DropFX.js           # pooled rarity-colored loot motes
   entities/             # Hero, Enemy (pooled), Tower, Projectile (pooled)
-  systems/WaveSystem.js # escalating wave director
-  ui/                   # DOM HUD + brand-themed CSS
+  systems/
+    WaveSystem.js       # escalating wave director
+    LootSystem.js       # bridges kills / full-clear to gear drops
+  ui/                   # DOM HUD, Stash panel, loot toasts + brand-themed CSS
 ```
 
 ### Two principles carried everywhere
@@ -65,8 +87,8 @@ src/
 
 ## Roadmap (design doc §9)
 
-1. ✅ **Single-player slice** — *this build*.
-2. Gear system — drops, rarities, perks, rolled stats, inventory.
+1. ✅ **Single-player slice**.
+2. ✅ **Gear system** — drops, rarities, perks, rolled stats, inventory, equip.
 3. Hero progression + skill tree + a second map.
 4. Co-op — 2–4 players, real-time WebSocket server.
 5. The Undercroft (instanced) + marketplace + wallet + Gold/$OSSA/USDC economy.

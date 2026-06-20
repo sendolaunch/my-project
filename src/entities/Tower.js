@@ -22,7 +22,7 @@ export class Tower {
     this.range2 = this.def.range * this.def.range;
   }
 
-  update(dt, enemyPool, spawnProjectile) {
+  update(dt, enemyPool, spawnProjectile, mods = {}) {
     this.cooldown -= dt;
     if (this.headPivot && this.kind === 'spire') {
       this.headPivot.rotation.y += dt * 1.5;   // idle spin, pure flavor
@@ -46,7 +46,8 @@ export class Tower {
 
     if (this.cooldown <= 0) {
       const muzzle = _v.copy(here); muzzle.y = 0.7;
-      spawnProjectile(muzzle, best, this.def.damage, this.def.projectileSpeed, this.def.splash, this.def.color);
+      const damage = this.def.damage * (1 + (mods.towerDamage || 0)); // §4 +tower damage perk
+      spawnProjectile(muzzle, best, damage, this.def.projectileSpeed, this.def.splash, this.def.color, {});
       this.cooldown = 1 / this.def.attacksPerSec;
     }
   }

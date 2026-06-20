@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Assets } from '../assets/AssetRegistry.js';
 import { HERO } from '../config/gameConfig.js';
+import { CRIT_MULTIPLIER } from '../items/itemDefs.js';
+import { PALETTE } from '../config/palette.js';
 
 // The player-controlled Warden (§3 "The Wall"). WASD to move, auto-attacks the
 // nearest Hollow in range. Taking contact damage downs the hero for a few
@@ -31,18 +33,22 @@ export class Hero {
     this.object.position.copy(this.home);
   }
 
-  update(dt, input, enemyPool, spawnProjectile) {
+  update(dt, input, enemyPool, spawnProjectile, mods = {}) {
     if (this.downed) {
       this.downTimer -= dt;
       if (this.downTimer <= 0) this._revive();
       return;
     }
 
+    // Equipped gear scales the base stats (§4 perks → live effects).
+    const moveSpeed = this.def.moveSpeed * (1 + (mods.moveSpeed || 0));
+    const atkSpeed = this.def.attacksPerSec * (1 + (mods.attackSpeed || 0));
+
     // Movement — normalized so diagonals aren't faster.
     const mv = input.moveVector();
     _move.set(mv.x, 0, mv.z);
     if (_move.lengthSq() > 0) {
-      _move.normalize().multiplyScalar(this.def.moveSpeed * dt);
+      _move.normalize().multiplyScalar(moveSpeed * dt);
       this.object.position.add(_move);
       this._clampToBoard();
       this.object.rotation.y = Math.atan2(_move.x, _move.z);
@@ -59,10 +65,20 @@ export class Hero {
       if (d <= bestD) { bestD = d; best = e; }
     });
     if (best && this.cooldown <= 0) {
+      let damage = this.def.attackDamage * (1 + (mods.heroDamage || 0));
+      const crit = Math.random() < (mods.critChance || 0);
+      if (crit) damage *= CRIT_MULTIPLIER;
       const muzzle = _v.copy(here); muzzle.y = 0.85;
-      spawnProjectile(muzzle, best, this.def.attackDamage, this.def.projectileSpeed, 0, this.def.color);
-      this.cooldown = 1 / this.def.attacksPerSec;
+      spawnProjectile(muzzle, best, damage, this.def.projectileSpeed, 0,
+        crit ? PALETTE.bone : this.def.color,
+        { fromHero: true, crit, lifesteal: mods.lifesteal || 0, chain: mods.chainLightning || 0 });
+      this.cooldown = 1 / atkSpeed;
     }
+  }
+
+  heal(amount) {
+    if (this.downed) return;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
   }
 
   /** Contact damage from an overlapping enemy (called by the combat resolver). */

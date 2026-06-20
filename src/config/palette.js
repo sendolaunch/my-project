@@ -18,6 +18,19 @@ export const PALETTE = {
   danger:      0xb83a2e, // ward-damage / lose feedback (rare, used sparingly)
 };
 
+// Rarity ladder (§4). Kept in the central color authority so item tints, the
+// stash UI and any in-world drop FX all read the same value. Leans on brand
+// where it counts — legendary is the plague-green hero/king glow — while still
+// giving the eye a readable common→mythic progression.
+export const RARITY_COLOR = {
+  common:    0x8f886f, // ash
+  uncommon:  0x5a9f48, // muted blight-green
+  rare:      0x3a9bb8, // cold ward-teal
+  epic:      0x9a5cc8, // violet
+  legendary: 0x6EE65A, // plague-green (the relic glow)
+  mythic:    0xf0c044, // searing bone-gold
+};
+
 // CSS-friendly helpers for the DOM HUD (§14: carry the brand into the whole UI).
 export const css = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
 
