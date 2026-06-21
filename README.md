@@ -17,8 +17,9 @@ order: *fun game first, money bolted on once it's fun*).
 
 ## Run it
 
-The slice is plain ES modules + [Three.js](https://threejs.org) from a CDN — **no build step**.
-You just need to serve the folder over HTTP (ES modules don't load from `file://`).
+The slice is plain ES modules. **Three.js is vendored locally** (`vendor/three`), so the game
+is fully self-contained — **no build step and no runtime CDN dependency**. You just need to
+serve the folder over HTTP (ES modules don't load from `file://`).
 
 ```bash
 npm start          # serves on http://localhost:5173  (uses `npx serve`)
@@ -26,7 +27,8 @@ npm start          # serves on http://localhost:5173  (uses `npx serve`)
 python3 -m http.server 5173
 ```
 
-Then open <http://localhost:5173>.
+Then open <http://localhost:5173>. Because it's pure static files with no always-on backend,
+the whole client deploys as-is to static hosting (e.g. Vercel).
 
 ## How to play
 

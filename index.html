@@ -6,15 +6,16 @@
   <title>OSSARA — Hold the breach. Loot the dead.</title>
   <link rel="stylesheet" href="./src/ui/style.css" />
   <!--
-    Three.js is pulled from a CDN via an import map so the slice runs with zero
-    build step — serve the folder with any static server and open it. When we
-    move to a bundler (Vite) for the co-op WebSocket work (§9.4), this import
-    map is the only thing that changes; all `import 'three'` statements stay.
+    Three.js is vendored locally (vendor/three) and wired through an import map,
+    so the game is fully self-contained — no runtime CDN dependency, no always-on
+    backend. This is what lets the whole client deploy as static files on Vercel.
+    When we move to a bundler (Vite) later, this import map is the only thing that
+    changes; every `import 'three'` statement stays.
   -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      "three": "./vendor/three/three.module.js"
     }
   }
   </script>
